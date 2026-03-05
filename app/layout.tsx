@@ -23,13 +23,16 @@ export const viewport: Viewport = {
 
 // 2. Add PWA-specific metadata
 export const metadata: Metadata = {
-  title: "My PWA App",
-  description: "A high-performance PWA built with Next.js",
+  title: "TwoPiR",
+  description: "Staking rewards tracker for pirusd",
+  icons: {
+    icon: "/icon-192x192.png",
+    apple: "/icon-192x192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "My PWA App",
-    // startupImage: "/screenshots/startup.png", // Optional: Add a splash screen later
+    title: "TwoPiR",
   },
   formatDetection: {
     telephone: false,
