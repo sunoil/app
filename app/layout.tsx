@@ -25,6 +25,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "TwoPiR",
   description: "Staking rewards tracker for pirusd",
+  manifest: "/manifest.json",
   icons: {
     icon: "/icon-192x192.png",
     apple: "/icon-192x192.png",
