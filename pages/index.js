@@ -486,20 +486,62 @@ export default function App() {
           minHeight: mob ? "auto" : 56, display: "flex", alignItems: mob ? "stretch" : "center",
           justifyContent: "space-between", flexDirection: mob ? "column" : "row", gap: mob ? 8 : 0,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: "linear-gradient(135deg, #2dd4a8 0%, #3b9ec9 40%, #6366f1 80%, #7c5cfc 100%)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 4px 14px rgba(99,102,241,0.35)", animation: "breathe 3s ease-in-out infinite",
-            }}>
-              <span style={{ fontSize: 15, fontWeight: 800, color: "#fff", fontFamily: "'Space Mono',monospace", letterSpacing: "-0.04em" }}>2πR</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: "linear-gradient(135deg, #2dd4a8 0%, #3b9ec9 40%, #6366f1 80%, #7c5cfc 100%)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 4px 14px rgba(99,102,241,0.35)", animation: "breathe 3s ease-in-out infinite",
+              }}>
+                <span style={{ fontSize: 15, fontWeight: 800, color: "#fff", fontFamily: "'Space Mono',monospace", letterSpacing: "-0.04em" }}>2πR</span>
+              </div>
+              <span style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Space Mono',monospace", letterSpacing: "-0.02em",
+                background: "linear-gradient(135deg, #2dd4a8, #6366f1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              }}>TwoPiR</span>
             </div>
-            <span style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Space Mono',monospace", letterSpacing: "-0.02em",
-              background: "linear-gradient(135deg, #2dd4a8, #6366f1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            }}>TwoPiR</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 16,
+                border: `1px solid ${C.border}`, fontSize: 11, fontWeight: 500, color: C.textSec, background: "#fff", whiteSpace: "nowrap", flexShrink: 0,
+              }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#e84142", animation: "pulseGlow 2s ease-in-out infinite" }} />
+                <span>{mob ? "AVAX" : "Avalanche"}</span>
+              </div>
+              {/* Install App button */}
+              {!isInstalled && (
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <button onClick={handleInstall} style={{
+                    display: "flex", alignItems: "center", gap: 5, height: 34, padding: "0 12px",
+                    borderRadius: 10, border: `1.5px solid ${C.accent}`, background: C.accentGlow,
+                    color: C.accent, fontSize: 11, fontWeight: 600, cursor: "pointer",
+                    fontFamily: "'DM Sans',sans-serif", whiteSpace: "nowrap", transition: "all 0.2s",
+                  }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 5v14M5 12l7 7 7-7"/>
+                    </svg>
+                    Install
+                  </button>
+                  {showIOSTip && (
+                    <div style={{
+                      position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 200,
+                      background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12,
+                      padding: "12px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+                      width: 220, fontSize: 12, color: C.text, lineHeight: 1.5,
+                    }}>
+                      <div style={{ fontWeight: 700, marginBottom: 6 }}>Install on your device</div>
+                      <div>Tap the <strong>Share</strong> button <span style={{ fontSize: 15 }}>⎋</span> in your browser, then select <strong>&quot;Add to Home Screen&quot;</strong>.</div>
+                      <button onClick={() => setShowIOSTip(false)} style={{
+                        marginTop: 8, border: "none", background: C.accentGlow, color: C.accent,
+                        borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                      }}>Got it</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: mob ? "unset" : "0 1 500px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{
               flex: 1, display: "flex", alignItems: "center", background: "#fff",
               border: `1.5px solid ${C.border}`, borderRadius: 10, padding: "0 10px", height: mob ? 38 : 36,
@@ -517,45 +559,6 @@ export default function App() {
               color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans',sans-serif",
               boxShadow: "0 3px 12px rgba(45,212,168,0.25)", whiteSpace: "nowrap",
             }}>{searching ? "…" : "Look Up"}</button>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 16,
-              border: `1px solid ${C.border}`, fontSize: 11, fontWeight: 500, color: C.textSec, background: "#fff", whiteSpace: "nowrap", flexShrink: 0,
-            }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#e84142", animation: "pulseGlow 2s ease-in-out infinite" }} />
-              <span>{mob ? "AVAX" : "Avalanche"}</span>
-            </div>
-            {/* Install App button — always visible unless already installed */}
-            {!isInstalled && (
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <button onClick={handleInstall} style={{
-                  display: "flex", alignItems: "center", gap: 5, height: mob ? 38 : 36, padding: "0 12px",
-                  borderRadius: 10, border: `1.5px solid ${C.accent}`, background: C.accentGlow,
-                  color: C.accent, fontSize: 11, fontWeight: 600, cursor: "pointer",
-                  fontFamily: "'DM Sans',sans-serif", whiteSpace: "nowrap", transition: "all 0.2s",
-                }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 5v14M5 12l7 7 7-7"/>
-                  </svg>
-                  {mob ? "Install" : "Install App"}
-                </button>
-                {/* iOS instructions tooltip */}
-                {showIOSTip && (
-                  <div style={{
-                    position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 200,
-                    background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12,
-                    padding: "12px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
-                    width: 220, fontSize: 12, color: C.text, lineHeight: 1.5,
-                  }}>
-                    <div style={{ fontWeight: 700, marginBottom: 6 }}>Install on your device</div>
-                    <div>Tap the <strong>Share</strong> button <span style={{ fontSize: 15 }}>⎋</span> in your browser, then select <strong>&quot;Add to Home Screen&quot;</strong>.</div>
-                    <button onClick={() => setShowIOSTip(false)} style={{
-                      marginTop: 8, border: "none", background: C.accentGlow, color: C.accent,
-                      borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer",
-                    }}>Got it</button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </header>
