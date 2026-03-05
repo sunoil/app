@@ -12,7 +12,7 @@ const C = {
   tealBg: "rgba(45,212,168,0.08)", gold: "#eab308", goldBg: "rgba(234,179,8,0.10)",
 };
 
-const APR = 14,4;
+const APR = 14.4;
 
 // Generate month forecast: 4 weekly points from current balance compounding at APR
 function buildMonthlyData(bal) {
@@ -855,3 +855,4 @@ export default function App() {
   );
 
 }
+
