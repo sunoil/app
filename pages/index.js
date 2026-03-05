@@ -14,13 +14,41 @@ const C = {
 
 const APR = 14.4;
 
-// Generate month forecast: 4 weekly points from current balance compounding at APR
+// Generate next 4 decade boundary dates (6th, 16th, 26th cycle)
+function getNextDecadeBoundaries() {
+  const cet = getNowCET();
+  const day = cet.getDate(), m = cet.getMonth(), y = cet.getFullYear();
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const boundaries = [];
+  // Find the first upcoming boundary after today
+  const candidates = [
+    dateCET(y, m, 6), dateCET(y, m, 16), dateCET(y, m, 26),
+    dateCET(y, m + 1, 6), dateCET(y, m + 1, 16), dateCET(y, m + 1, 26),
+    dateCET(y, m + 2, 6), dateCET(y, m + 2, 16),
+  ];
+  for (const d of candidates) {
+    if (d > cet && boundaries.length < 4) {
+      const bd = new Date(d.getTime() + 3600000); // convert back to CET display
+      boundaries.push({ date: d, label: `${bd.getDate()} ${MONTHS[bd.getMonth()]}` });
+    }
+  }
+  return boundaries;
+}
+
+// Generate month forecast: 4 decade boundary points from current balance compounding at APR
 function buildMonthlyData(bal) {
-  if (bal <= 0) return [{ label: "Now", value: 0 }, { label: "Wk 1", value: 0 }, { label: "Wk 2", value: 0 }, { label: "Wk 3", value: 0 }, { label: "Wk 4", value: 0 }];
-  const weeklyRate = APR / 100 / 365 * 7;
-  return ["Now", "Wk 1", "Wk 2", "Wk 3", "Wk 4"].map((label, i) => ({
-    label, value: Math.round(bal * (1 + weeklyRate * i) * 100) / 100,
-  }));
+  const boundaries = getNextDecadeBoundaries();
+  const now = new Date();
+  const emptyLabels = boundaries.map(b => b.label);
+  if (bal <= 0) return [{ label: "Now", value: 0 }, ...emptyLabels.map(label => ({ label, value: 0 }))];
+  const dailyRate = APR / 100 / 365;
+  return [
+    { label: "Now", value: Math.round(bal * 100) / 100 },
+    ...boundaries.map(b => {
+      const days = (b.date - now) / (1000 * 60 * 60 * 24);
+      return { label: b.label, value: Math.round(bal * (1 + dailyRate * days) * 100) / 100 };
+    }),
+  ];
 }
 
 // Generate year forecast: 12 monthly points from current balance compounding at APR
@@ -111,7 +139,7 @@ function LiveRewardCounter({ balance, apr, mobile }) {
       <span style={{ fontSize: mobile ? 28 : 34, fontWeight: 700, color: C.text, letterSpacing: "-0.03em", lineHeight: 1 }}>{whole.toLocaleString("en-US")}</span>
       <span style={{ fontSize: mobile ? 28 : 34, fontWeight: 700, color: C.textMuted }}>.</span>
       <span style={{ fontSize: mobile ? 15 : 17, fontWeight: 400, color: C.accent }}>{frac}</span>
-      <span style={{ fontSize: 10, fontWeight: 600, color: C.textMuted, marginLeft: 6, alignSelf: "flex-end", marginBottom: 2 }}>USDT</span>
+      <span style={{ fontSize: 10, fontWeight: 600, color: C.textMuted, marginLeft: 6, alignSelf: "flex-end", marginBottom: 2 }}>PIRUSD</span>
     </div>
   );
 }
@@ -599,7 +627,7 @@ export default function App() {
                 <span style={{ fontSize: mob ? 36 : 44, fontWeight: 700, fontFamily: "'Space Mono',monospace", letterSpacing: "-0.03em", lineHeight: 1, color: C.text, animation: "slideUp 0.8s cubic-bezier(0.16,1,0.3,1) both" }}>
                   <AnimNum value={balance} prefix="$" />
                 </span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: C.textMuted }}>USDT</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: C.textMuted }}>PIRUSD</span>
               </div>
 
               {/* APR + Earned pills */}
@@ -695,7 +723,7 @@ export default function App() {
                 </div>
                 <div>
                   <p style={{ fontSize: 10, fontWeight: 600, color: C.textSec, margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Next Auto-Deposit</p>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: C.primary, margin: "2px 0 0", fontFamily: "'Space Mono',monospace" }}>${rewardTarget.toFixed(2)} USDT</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: C.primary, margin: "2px 0 0", fontFamily: "'Space Mono',monospace" }}>${Math.floor(rewardTarget)} PIRUSD</p>
                 </div>
               </div>
               <PayoutCountdown mobile={mob} />
