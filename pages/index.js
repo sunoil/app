@@ -3,7 +3,6 @@ import { loadData, getPirusdBalance, getPirusdTransfers } from '../web3/funcs';
 
 
 
-
 const C = {
   bg: "#f0f4f8", primary: "#2dd4a8", primaryDark: "#1aab87",
   accent: "#7c5cfc", accentLight: "#a78bfa", accentGlow: "rgba(124,92,252,0.15)",
@@ -465,6 +464,7 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#f0f4f8 0%,#e8eef5 40%,#f0f0fa 100%)", fontFamily: "'DM Sans',-apple-system,sans-serif", color: C.text, position: "relative" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+      <link rel="manifest" href="/manifest.json" />
       <style>{`
         @keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-25px) scale(1.15)}}
         @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
@@ -481,6 +481,7 @@ export default function App() {
         background: "rgba(255,255,255,0.78)", backdropFilter: "blur(24px) saturate(1.4)",
         borderBottom: `1px solid ${C.border}`, position: "sticky", top: 0, zIndex: 100,
       }}>
+        
         <div style={{
           maxWidth: 1200, margin: "0 auto", padding: mob ? "10px 14px" : "0 24px",
           minHeight: mob ? "auto" : 56, display: "flex", alignItems: mob ? "stretch" : "center",
@@ -853,4 +854,5 @@ export default function App() {
       </main>
     </div>
   );
+
 }
