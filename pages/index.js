@@ -368,28 +368,40 @@ export default function App() {
   const [totalRewards, setTotalRewards] = useState(0);
   const [error, setError] = useState("");
   const [installPrompt, setInstallPrompt] = useState(null);
-  const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [showIOSTip, setShowIOSTip] = useState(false);
   const chartRef = useRef(null);
   const chartVis = useInView(chartRef);
 
-  // Capture the browser's install prompt
+  // Capture the browser's install prompt (Chrome/Android)
   useEffect(() => {
     const handler = (e) => {
       e.preventDefault();
       setInstallPrompt(e);
-      setShowInstallBanner(true);
     };
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
+  // Detect if already installed as PWA (hide button)
+  const [isInstalled, setIsInstalled] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) {
+      setIsInstalled(true);
+    }
+    if (window.navigator.standalone === true) setIsInstalled(true);
+  }, []);
+
   const handleInstall = async () => {
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    const result = await installPrompt.userChoice;
-    if (result.outcome === "accepted") {
-      setShowInstallBanner(false);
-      setInstallPrompt(null);
+    if (installPrompt) {
+      // Chrome / Android — trigger the native prompt
+      installPrompt.prompt();
+      const result = await installPrompt.userChoice;
+      if (result.outcome === "accepted") {
+        setInstallPrompt(null);
+      }
+    } else {
+      // iOS / other browsers — show instructions tooltip
+      setShowIOSTip(prev => !prev);
     }
   };
 
@@ -476,14 +488,16 @@ export default function App() {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
             <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: `linear-gradient(135deg,${C.primary},${C.primaryDark})`,
+              width: 36, height: 36, borderRadius: 10,
+              background: "linear-gradient(135deg, #2dd4a8 0%, #3b9ec9 40%, #6366f1 80%, #7c5cfc 100%)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 3px 10px rgba(45,212,168,0.3)", animation: "breathe 3s ease-in-out infinite",
+              boxShadow: "0 4px 14px rgba(99,102,241,0.35)", animation: "breathe 3s ease-in-out infinite",
             }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>2π</span>
+              <span style={{ fontSize: 15, fontWeight: 800, color: "#fff", fontFamily: "'Space Mono',monospace", letterSpacing: "-0.04em" }}>2πR</span>
             </div>
-            <span style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Space Mono',monospace", letterSpacing: "-0.02em" }}>TwoPiR</span>
+            <span style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Space Mono',monospace", letterSpacing: "-0.02em",
+              background: "linear-gradient(135deg, #2dd4a8, #6366f1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            }}>TwoPiR</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flex: mob ? "unset" : "0 1 500px" }}>
             <div style={{
@@ -510,6 +524,38 @@ export default function App() {
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#e84142", animation: "pulseGlow 2s ease-in-out infinite" }} />
               <span>{mob ? "AVAX" : "Avalanche"}</span>
             </div>
+            {/* Install App button — always visible unless already installed */}
+            {!isInstalled && (
+              <div style={{ position: "relative", flexShrink: 0 }}>
+                <button onClick={handleInstall} style={{
+                  display: "flex", alignItems: "center", gap: 5, height: mob ? 38 : 36, padding: "0 12px",
+                  borderRadius: 10, border: `1.5px solid ${C.accent}`, background: C.accentGlow,
+                  color: C.accent, fontSize: 11, fontWeight: 600, cursor: "pointer",
+                  fontFamily: "'DM Sans',sans-serif", whiteSpace: "nowrap", transition: "all 0.2s",
+                }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 5v14M5 12l7 7 7-7"/>
+                  </svg>
+                  {mob ? "Install" : "Install App"}
+                </button>
+                {/* iOS instructions tooltip */}
+                {showIOSTip && (
+                  <div style={{
+                    position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 200,
+                    background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12,
+                    padding: "12px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+                    width: 220, fontSize: 12, color: C.text, lineHeight: 1.5,
+                  }}>
+                    <div style={{ fontWeight: 700, marginBottom: 6 }}>Install on your device</div>
+                    <div>Tap the <strong>Share</strong> button <span style={{ fontSize: 15 }}>⎋</span> in your browser, then select <strong>&quot;Add to Home Screen&quot;</strong>.</div>
+                    <button onClick={() => setShowIOSTip(false)} style={{
+                      marginTop: 8, border: "none", background: C.accentGlow, color: C.accent,
+                      borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                    }}>Got it</button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -802,49 +848,6 @@ export default function App() {
           </div>
         </Reveal>
       </main>
-
-      {/* ── Install PWA banner ── */}
-      {showInstallBanner && (
-        <div style={{
-          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
-          background: "rgba(255,255,255,0.95)", backdropFilter: "blur(16px)",
-          borderTop: `1px solid ${C.border}`,
-          padding: mob ? "12px 14px" : "14px 24px",
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-          boxShadow: "0 -4px 20px rgba(0,0,0,0.06)",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-              background: `linear-gradient(135deg,${C.primary},${C.primaryDark})`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(45,212,168,0.3)",
-            }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>2π</span>
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, margin: 0, color: C.text }}>Install TwoPiR</p>
-              <p style={{ fontSize: 10, color: C.textSec, margin: "1px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                Add to home screen for quick access
-              </p>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button onClick={() => setShowInstallBanner(false)} style={{
-              padding: "7px 12px", borderRadius: 8, border: `1px solid ${C.border}`,
-              background: "transparent", fontSize: 11, fontWeight: 600,
-              color: C.textSec, cursor: "pointer", fontFamily: "'DM Sans',sans-serif",
-            }}>Later</button>
-            <button onClick={handleInstall} style={{
-              padding: "7px 14px", borderRadius: 8, border: "none",
-              background: `linear-gradient(135deg,${C.primary},${C.primaryDark})`,
-              color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer",
-              fontFamily: "'DM Sans',sans-serif",
-              boxShadow: "0 2px 10px rgba(45,212,168,0.25)",
-            }}>Install</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
