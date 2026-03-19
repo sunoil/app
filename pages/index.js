@@ -12,15 +12,43 @@ const C = {
   tealBg: "rgba(45,212,168,0.08)", gold: "#eab308", goldBg: "rgba(234,179,8,0.10)",
 };
 
-const APR = 12;
+const APR = 14.4;
 
-// Generate month forecast: 4 weekly points from current balance compounding at APR
+// Generate next 4 decade boundary dates (6th, 16th, 26th cycle)
+function getNextDecadeBoundaries() {
+  const cet = getNowCET();
+  const day = cet.getDate(), m = cet.getMonth(), y = cet.getFullYear();
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const boundaries = [];
+  // Find the first upcoming boundary after today
+  const candidates = [
+    dateCET(y, m, 6), dateCET(y, m, 16), dateCET(y, m, 26),
+    dateCET(y, m + 1, 6), dateCET(y, m + 1, 16), dateCET(y, m + 1, 26),
+    dateCET(y, m + 2, 6), dateCET(y, m + 2, 16),
+  ];
+  for (const d of candidates) {
+    if (d > cet && boundaries.length < 4) {
+      const bd = new Date(d.getTime() + 3600000); // convert back to CET display
+      boundaries.push({ date: d, label: `${bd.getDate()} ${MONTHS[bd.getMonth()]}` });
+    }
+  }
+  return boundaries;
+}
+
+// Generate month forecast: 4 decade boundary points from current balance compounding at APR
 function buildMonthlyData(bal) {
-  if (bal <= 0) return [{ label: "Now", value: 0 }, { label: "Wk 1", value: 0 }, { label: "Wk 2", value: 0 }, { label: "Wk 3", value: 0 }, { label: "Wk 4", value: 0 }];
-  const weeklyRate = APR / 100 / 365 * 7;
-  return ["Now", "Wk 1", "Wk 2", "Wk 3", "Wk 4"].map((label, i) => ({
-    label, value: Math.round(bal * (1 + weeklyRate * i) * 100) / 100,
-  }));
+  const boundaries = getNextDecadeBoundaries();
+  const now = new Date();
+  const emptyLabels = boundaries.map(b => b.label);
+  if (bal <= 0) return [{ label: "Now", value: 0 }, ...emptyLabels.map(label => ({ label, value: 0 }))];
+  const dailyRate = APR / 100 / 365;
+  return [
+    { label: "Now", value: Math.round(bal * 100) / 100 },
+    ...boundaries.map(b => {
+      const days = (b.date - now) / (1000 * 60 * 60 * 24);
+      return { label: b.label, value: Math.round(bal * (1 + dailyRate * days) * 100) / 100 };
+    }),
+  ];
 }
 
 // Generate year forecast: 12 monthly points from current balance compounding at APR
@@ -59,13 +87,27 @@ function useInView(ref) {
   return v;
 }
 
-// Reward dates: 5th, 15th, 25th of each month
+// Helper: get current time in CET (UTC+1) as a Date-like object
+function getNowCET() {
+  const now = new Date();
+  const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+  return new Date(utcMs + 3600000); // +1h for CET
+}
+
+// Helper: create a Date representing midnight CET for a specific calendar date
+function dateCET(y, m, d) {
+  // midnight CET = 23:00 UTC the day before
+  return new Date(Date.UTC(y, m, d) - 3600000);
+}
+
+// Reward dates: 6th, 16th, 26th of each month (all in CET)
 function getRewardDates() {
-  const now = new Date(), day = now.getDate(), m = now.getMonth(), y = now.getFullYear();
-  if (day < 5)  return { start: new Date(y, m - 1, 25), end: new Date(y, m, 5) };
-  if (day < 15) return { start: new Date(y, m, 5),      end: new Date(y, m, 15) };
-  if (day < 25) return { start: new Date(y, m, 15),     end: new Date(y, m, 25) };
-  return { start: new Date(y, m, 25), end: new Date(y, m + 1, 5) };
+  const cet = getNowCET();
+  const day = cet.getDate(), m = cet.getMonth(), y = cet.getFullYear();
+  if (day < 6)  return { start: dateCET(y, m - 1, 26), end: dateCET(y, m, 6) };
+  if (day < 16) return { start: dateCET(y, m, 6),      end: dateCET(y, m, 16) };
+  if (day < 26) return { start: dateCET(y, m, 16),     end: dateCET(y, m, 26) };
+  return { start: dateCET(y, m, 26), end: dateCET(y, m + 1, 6) };
 }
 
 function getRewardTarget(balance, apr) {
@@ -97,7 +139,7 @@ function LiveRewardCounter({ balance, apr, mobile }) {
       <span style={{ fontSize: mobile ? 28 : 34, fontWeight: 700, color: C.text, letterSpacing: "-0.03em", lineHeight: 1 }}>{whole.toLocaleString("en-US")}</span>
       <span style={{ fontSize: mobile ? 28 : 34, fontWeight: 700, color: C.textMuted }}>.</span>
       <span style={{ fontSize: mobile ? 15 : 17, fontWeight: 400, color: C.accent }}>{frac}</span>
-      <span style={{ fontSize: 10, fontWeight: 600, color: C.textMuted, marginLeft: 6, alignSelf: "flex-end", marginBottom: 2 }}>USDT</span>
+      <span style={{ fontSize: 10, fontWeight: 600, color: C.textMuted, marginLeft: 6, alignSelf: "flex-end", marginBottom: 2 }}>PIRUSD</span>
     </div>
   );
 }
@@ -353,8 +395,43 @@ export default function App() {
   const [transfers, setTransfers] = useState([]);
   const [totalRewards, setTotalRewards] = useState(0);
   const [error, setError] = useState("");
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showIOSTip, setShowIOSTip] = useState(false);
   const chartRef = useRef(null);
   const chartVis = useInView(chartRef);
+
+  // Capture the browser's install prompt (Chrome/Android)
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  // Detect if already installed as PWA (hide button)
+  const [isInstalled, setIsInstalled] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) {
+      setIsInstalled(true);
+    }
+    if (window.navigator.standalone === true) setIsInstalled(true);
+  }, []);
+
+  const handleInstall = async () => {
+    if (installPrompt) {
+      // Chrome / Android — trigger the native prompt
+      installPrompt.prompt();
+      const result = await installPrompt.userChoice;
+      if (result.outcome === "accepted") {
+        setInstallPrompt(null);
+      }
+    } else {
+      // iOS / other browsers — show instructions tooltip
+      setShowIOSTip(prev => !prev);
+    }
+  };
 
   // Restore last looked-up wallet from localStorage on mount
   useEffect(() => {
@@ -437,18 +514,62 @@ export default function App() {
           minHeight: mob ? "auto" : 56, display: "flex", alignItems: mob ? "stretch" : "center",
           justifyContent: "space-between", flexDirection: mob ? "column" : "row", gap: mob ? 8 : 0,
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: `linear-gradient(135deg,${C.primary},${C.primaryDark})`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 3px 10px rgba(45,212,168,0.3)", animation: "breathe 3s ease-in-out infinite",
-            }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#fff" }}>2π</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: "linear-gradient(135deg, #2dd4a8 0%, #3b9ec9 40%, #6366f1 80%, #7c5cfc 100%)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 4px 14px rgba(99,102,241,0.35)", animation: "breathe 3s ease-in-out infinite",
+              }}>
+                <span style={{ fontSize: 15, fontWeight: 800, color: "#fff", fontFamily: "'Space Mono',monospace", letterSpacing: "-0.04em" }}>2πR</span>
+              </div>
+              <span style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Space Mono',monospace", letterSpacing: "-0.02em",
+                background: "linear-gradient(135deg, #2dd4a8, #6366f1)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+              }}>TwoPiR</span>
             </div>
-            <span style={{ fontSize: 17, fontWeight: 700, fontFamily: "'Space Mono',monospace", letterSpacing: "-0.02em" }}>TwoPiR</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 16,
+                border: `1px solid ${C.border}`, fontSize: 11, fontWeight: 500, color: C.textSec, background: "#fff", whiteSpace: "nowrap", flexShrink: 0,
+              }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#e84142", animation: "pulseGlow 2s ease-in-out infinite" }} />
+                <span>{mob ? "AVAX" : "Avalanche"}</span>
+              </div>
+              {/* Install App button */}
+              {!isInstalled && (
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <button onClick={handleInstall} style={{
+                    display: "flex", alignItems: "center", gap: 5, height: 34, padding: "0 12px",
+                    borderRadius: 10, border: `1.5px solid ${C.accent}`, background: C.accentGlow,
+                    color: C.accent, fontSize: 11, fontWeight: 600, cursor: "pointer",
+                    fontFamily: "'DM Sans',sans-serif", whiteSpace: "nowrap", transition: "all 0.2s",
+                  }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 5v14M5 12l7 7 7-7"/>
+                    </svg>
+                    Install
+                  </button>
+                  {showIOSTip && (
+                    <div style={{
+                      position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 200,
+                      background: "#fff", border: `1px solid ${C.border}`, borderRadius: 12,
+                      padding: "12px 14px", boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+                      width: 220, fontSize: 12, color: C.text, lineHeight: 1.5,
+                    }}>
+                      <div style={{ fontWeight: 700, marginBottom: 6 }}>Install on your device</div>
+                      <div>Tap the <strong>Share</strong> button <span style={{ fontSize: 15 }}>⎋</span> in your browser, then select <strong>&quot;Add to Home Screen&quot;</strong>.</div>
+                      <button onClick={() => setShowIOSTip(false)} style={{
+                        marginTop: 8, border: "none", background: C.accentGlow, color: C.accent,
+                        borderRadius: 6, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer",
+                      }}>Got it</button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: mob ? "unset" : "0 1 500px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{
               flex: 1, display: "flex", alignItems: "center", background: "#fff",
               border: `1.5px solid ${C.border}`, borderRadius: 10, padding: "0 10px", height: mob ? 38 : 36,
@@ -466,13 +587,6 @@ export default function App() {
               color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans',sans-serif",
               boxShadow: "0 3px 12px rgba(45,212,168,0.25)", whiteSpace: "nowrap",
             }}>{searching ? "…" : "Look Up"}</button>
-            <div style={{
-              display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 16,
-              border: `1px solid ${C.border}`, fontSize: 11, fontWeight: 500, color: C.textSec, background: "#fff", whiteSpace: "nowrap", flexShrink: 0,
-            }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#e84142", animation: "pulseGlow 2s ease-in-out infinite" }} />
-              <span>{mob ? "AVAX" : "Avalanche"}</span>
-            </div>
           </div>
         </div>
       </header>
@@ -513,7 +627,7 @@ export default function App() {
                 <span style={{ fontSize: mob ? 36 : 44, fontWeight: 700, fontFamily: "'Space Mono',monospace", letterSpacing: "-0.03em", lineHeight: 1, color: C.text, animation: "slideUp 0.8s cubic-bezier(0.16,1,0.3,1) both" }}>
                   <AnimNum value={balance} prefix="$" />
                 </span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: C.textMuted }}>USDT</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: C.textMuted }}>PIRUSD</span>
               </div>
 
               {/* APR + Earned pills */}
@@ -591,7 +705,7 @@ export default function App() {
                   <LiveRewardCounter balance={balance} apr={APR} mobile={mob} />
                 </div>
                 <p style={{ fontSize: 11, color: C.textSec, margin: "10px 0 0", lineHeight: 1.5 }}>
-                  Grows in real time. Auto-deposited on the 5th, 15th &amp; 25th.
+                  Grows in real time. Auto-deposited on the 6th, 16th &amp; 26th (CET).
                 </p>
               </div>
             </div>
@@ -609,7 +723,7 @@ export default function App() {
                 </div>
                 <div>
                   <p style={{ fontSize: 10, fontWeight: 600, color: C.textSec, margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>Next Auto-Deposit</p>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: C.primary, margin: "2px 0 0", fontFamily: "'Space Mono',monospace" }}>${rewardTarget.toFixed(2)} USDT</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: C.primary, margin: "2px 0 0", fontFamily: "'Space Mono',monospace" }}>${Math.floor(rewardTarget)} PIRUSD</p>
                 </div>
               </div>
               <PayoutCountdown mobile={mob} />
@@ -666,7 +780,7 @@ export default function App() {
                 <p style={{ fontSize: 12, fontWeight: 700, margin: "0 0 10px", color: C.text }}>How Rewards Work</p>
                 {[
                   "Rewards accrue every second based on balance & APR.",
-                  "On the 5th, 15th & 25th, they auto-deposit to your wallet.",
+                  "On the 6th, 16th & 26th (CET), they auto-deposit to your wallet.",
                   "New deposits qualify starting from the next reward date.",
                 ].map((t, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 7, fontSize: 11, color: C.textSec, lineHeight: 1.5 }}>
@@ -767,4 +881,6 @@ export default function App() {
       </main>
     </div>
   );
+
 }
+
